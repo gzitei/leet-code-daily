@@ -26,18 +26,19 @@ type Challenge struct {
 					Lang     string `json:"lang"`
 					LangSlug string `json:"langSlug"`
 				} `json:"codeSnippets"`
-				CompanyTags        interface{}   `json:"companyTags"`
-				Content            string        `json:"content"`
-				DataSchemas        []interface{} `json:"dataSchemas"`
-				Difficulty         string        `json:"difficulty"`
-				FreqBar            interface{}   `json:"freqBar"`
-				FrontendQuestionID string        `json:"frontendQuestionId"`
-				HasSolution        bool          `json:"hasSolution"`
-				HasVideoSolution   bool          `json:"hasVideoSolution"`
-				Hints              []string      `json:"hints"`
-				IsFavor            bool          `json:"isFavor"`
-				PaidOnly           bool          `json:"paidOnly"`
-				Solution           struct {
+				CompanyTags         interface{}   `json:"companyTags"`
+				Content             string        `json:"content"`
+				DataSchemas         []interface{} `json:"dataSchemas"`
+				Difficulty          string        `json:"difficulty"`
+				ExampleTestcaseList []string      `json:"exampleTestcaseList"`
+				FreqBar             interface{}   `json:"freqBar"`
+				FrontendQuestionID  string        `json:"frontendQuestionId"`
+				HasSolution         bool          `json:"hasSolution"`
+				HasVideoSolution    bool          `json:"hasVideoSolution"`
+				Hints               []string      `json:"hints"`
+				IsFavor             bool          `json:"isFavor"`
+				PaidOnly            bool          `json:"paidOnly"`
+				Solution            struct {
 					Body string `json:"body"`
 				} `json:"solution"`
 				Status    interface{} `json:"status"`
@@ -58,7 +59,7 @@ func getDailyCodingChallenge() (Challenge, error) {
 	url := "https://leetcode.com/graphql/"
 	method := "POST"
 	payload := strings.NewReader(`{
-    "query": "\n    query questionOfToday {\n  activeDailyCodingChallengeQuestion {\n    date\n    userStatus\n    link\n    question {\n      codeSnippets {\n      lang\n      langSlug\n      code\n    }\n    dataSchemas\n      companyTags {name, slug\n}\n      solution {body}\n    acRate\n      content\n      categoryTitle\n      difficulty\n      freqBar\n      frontendQuestionId: questionFrontendId\n      isFavor\n      hints\n      paidOnly: isPaidOnly\n      status\n      title\n      titleSlug\n      hasVideoSolution\n      hasSolution\n      topicTags {\n        name\n        id\n        slug\n      }\n    }\n  }\n}\n    ",
+    "query": "\n    query questionOfToday {\n  activeDailyCodingChallengeQuestion {\n    date\n    userStatus\n    link\n    question {\n      codeSnippets {\n      lang\n      langSlug\n      code\n    }\n    dataSchemas\n      companyTags {name, slug\n}\n      solution {body}\n    acRate\n      content\n      exampleTestcaseList\n      categoryTitle\n      difficulty\n      freqBar\n      frontendQuestionId: questionFrontendId\n      isFavor\n      hints\n      paidOnly: isPaidOnly\n      status\n      title\n      titleSlug\n      hasVideoSolution\n      hasSolution\n      topicTags {\n        name\n        id\n        slug\n      }\n    }\n  }\n}\n    ",
     "variables": {},
     "operationName": "questionOfToday"
 }`)
@@ -115,7 +116,7 @@ func CreateFolder() string {
 }
 
 func goToFolder(str string) {
-	cmd := exec.Command("/usr/bin/tmux", "new-session", "-d", "-s", dir, "bash", "-c", "cd "+str+" && nvim -c 'Alpha' "+str)
+	cmd := exec.Command("/usr/bin/tmux", "new-session", "-d", "-s", dir, "bash", "-c", "cd "+str+"; nvim -c '!less ./challenge.md -j 0' .")
 	if err := cmd.Run(); err != nil {
 		fmt.Println(err)
 	}
@@ -148,7 +149,7 @@ func main() {
 	if markdown, err := converter.ConvertString(question.Content); err == nil {
 		markdown = strings.ReplaceAll(markdown, "(../", "("+link+"/")
 		tags := "```yaml\n🔖tags: " + strings.Join(tagList, " ") + "\n```"
-		s := fmt.Sprintf("# %s\n##### 📌 %s | 📆 %s | [%s %s]() | 📊 %.2f%% | 🌐 [Leet-Code #%s](%s)\n%s\n---\n",
+		s := fmt.Sprintf("# %s\n##### 📌 %s | 📆 %s | [%s %s]('') | 📊 %.2f%% | 🌐 [Leet-Code #%s](%s)\n%s\n---\n",
 			title,
 			question.CategoryTitle,
 			challenge.Data.ActiveDailyCodingChallengeQuestion.Date,
@@ -173,13 +174,14 @@ func main() {
 		WriteFile(".solution.md", markdown)
 	}
 	for _, snp := range question.CodeSnippets {
+		test := strings.Join(question.ExampleTestcaseList, ", ")
 		switch snp.Lang {
 		case "Python3":
-			WriteFile("solution.py", snp.Code)
+			WriteFile("solution.py", fmt.Sprintf("%spass\n\n\tdef main():\n\t\t# %s\n\n\nmain()", snp.Code, test))
 		case "TypeScript":
-			WriteFile("solution.ts", snp.Code)
+			WriteFile("solution.ts", fmt.Sprintf("%s\n\n//%s", snp.Code, test))
 		case "Go":
-			WriteFile("main.go", "package main\n\n"+snp.Code+"\n\nfunc main() {\n}")
+			WriteFile("main.go", fmt.Sprintf("package main\n\n%s\n\nfunc main() {\n\t//%s\n}", snp.Code, test))
 		}
 	}
 	goToFolder(created)

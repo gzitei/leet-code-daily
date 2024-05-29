@@ -26,19 +26,30 @@ type Challenge struct {
 					Lang     string `json:"lang"`
 					LangSlug string `json:"langSlug"`
 				} `json:"codeSnippets"`
-				CompanyTags         interface{}   `json:"companyTags"`
-				Content             string        `json:"content"`
-				DataSchemas         []interface{} `json:"dataSchemas"`
-				Difficulty          string        `json:"difficulty"`
-				ExampleTestcaseList []string      `json:"exampleTestcaseList"`
-				FreqBar             interface{}   `json:"freqBar"`
-				FrontendQuestionID  string        `json:"frontendQuestionId"`
-				HasSolution         bool          `json:"hasSolution"`
-				HasVideoSolution    bool          `json:"hasVideoSolution"`
-				Hints               []string      `json:"hints"`
-				IsFavor             bool          `json:"isFavor"`
-				PaidOnly            bool          `json:"paidOnly"`
-				Solution            struct {
+				CompanyTags         interface{} `json:"companyTags"`
+				Content             string      `json:"content"`
+				Difficulty          string      `json:"difficulty"`
+				ExampleTestcaseList []string    `json:"exampleTestcaseList"`
+				FreqBar             interface{} `json:"freqBar"`
+				FrontendQuestionID  string      `json:"frontendQuestionId"`
+				HasSolution         bool        `json:"hasSolution"`
+				HasVideoSolution    bool        `json:"hasVideoSolution"`
+				Hints               []string    `json:"hints"`
+				IsFavor             bool        `json:"isFavor"`
+				PaidOnly            bool        `json:"paidOnly"`
+				SimilarQuestionList []struct {
+					Difficulty         string `json:"difficulty"`
+					FrontendQuestionID string `json:"frontendQuestionId"`
+					PaidOnly           bool   `json:"paidOnly"`
+					Title              string `json:"title"`
+					TitleSlug          string `json:"titleSlug"`
+					TopicTags          []struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+						Slug string `json:"slug"`
+					} `json:"topicTags"`
+				} `json:"similarQuestionList"`
+				Solution struct {
 					Body string `json:"body"`
 				} `json:"solution"`
 				Status    interface{} `json:"status"`
@@ -59,7 +70,7 @@ func getDailyCodingChallenge() (Challenge, error) {
 	url := "https://leetcode.com/graphql/"
 	method := "POST"
 	payload := strings.NewReader(`{
-    "query": "\n    query questionOfToday {\n  activeDailyCodingChallengeQuestion {\n    date\n    userStatus\n    link\n    question {\n      codeSnippets {\n      lang\n      langSlug\n      code\n    }\n    dataSchemas\n      companyTags {name, slug\n}\n      solution {body}\n    acRate\n      content\n      exampleTestcaseList\n      categoryTitle\n      difficulty\n      freqBar\n      frontendQuestionId: questionFrontendId\n      isFavor\n      hints\n      paidOnly: isPaidOnly\n      status\n      title\n      titleSlug\n      hasVideoSolution\n      hasSolution\n      topicTags {\n        name\n        id\n        slug\n      }\n    }\n  }\n}\n    ",
+    "query": "query questionOfToday { activeDailyCodingChallengeQuestion { date userStatus link question { companyTags { name slug } solution { body } acRate content categoryTitle hints exampleTestcaseList difficulty freqBar frontendQuestionId: questionFrontendId isFavor paidOnly: isPaidOnly status title titleSlug hasVideoSolution hasSolution topicTags { name id slug } codeSnippets { lang langSlug code } similarQuestionList { title titleSlug paidOnly: isPaidOnly topicTags { name id slug } frontendQuestionId: questionFrontendId difficulty } } } }",
     "variables": {},
     "operationName": "questionOfToday"
 }`)
@@ -74,6 +85,7 @@ func getDailyCodingChallenge() (Challenge, error) {
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("origin", "https://leetcode.com")
 	req.Header.Add("pragma", "no-cache")
+	req.Header.Add("referer", "https://leetcode.com/problemset/")
 	req.Header.Add("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
 
 	res, err := client.Do(req)
@@ -91,6 +103,7 @@ func getDailyCodingChallenge() (Challenge, error) {
 	var content Challenge
 	err = json.Unmarshal(body, &content)
 	if err != nil {
+		fmt.Println(string(body))
 		fmt.Println(err)
 	}
 	return content, err
@@ -116,7 +129,7 @@ func CreateFolder() string {
 }
 
 func goToFolder(str string) {
-	cmd := exec.Command("/usr/bin/tmux", "new-session", "-d", "-s", dir, "bash", "-c", "cd "+str+"; nvim -c '!less ./challenge.md -j 0' .")
+	cmd := exec.Command("/usr/bin/tmux", "new-session", "-d", "-s", dir, "bash", "-c", "cd "+str+"; nvim -c 'Glow challenge.md' main.go")
 	if err := cmd.Run(); err != nil {
 		fmt.Println(err)
 	}
@@ -149,7 +162,7 @@ func main() {
 	if markdown, err := converter.ConvertString(question.Content); err == nil {
 		markdown = strings.ReplaceAll(markdown, "(../", "("+link+"/")
 		tags := "```yaml\n🔖tags: " + strings.Join(tagList, " ") + "\n```"
-		s := fmt.Sprintf("# %s\n##### 📌 %s | 📆 %s | [%s %s]('') | 📊 %.2f%% | 🌐 [Leet-Code #%s](%s)\n%s\n---\n",
+		s := fmt.Sprintf("# %s\n##### 📌 %s | 📆 %s | %s %s | 📊 %.2f%% | 🌐 [Leet-Code #%s](%s)\n---\n%s\n---\n",
 			title,
 			question.CategoryTitle,
 			challenge.Data.ActiveDailyCodingChallengeQuestion.Date,
@@ -161,10 +174,26 @@ func main() {
 			tags,
 		)
 		s += markdown
-		s += "\n"
+		s += "\n\n"
+		s += "> ### Questões Similares:\n"
+		for _, similar := range question.SimilarQuestionList {
+			similarTopics := []string{}
+			for _, topic := range similar.TopicTags {
+				similarTopics = append(similarTopics, "#"+topic.Slug)
+			}
+			s += fmt.Sprintf("> %s [%s. %s](https://leetcode.com/problems/%s) %s\n",
+				status[similar.Difficulty],
+				similar.FrontendQuestionID,
+				similar.Title,
+				similar.TitleSlug,
+				strings.Join(similarTopics, " "),
+			)
+		}
+		s += "\n\n"
 		for _, h := range question.Hints {
 			s += "\n>💡" + h
 		}
+
 		WriteFile("challenge.md", s)
 	} else {
 		fmt.Println(err)
@@ -177,11 +206,11 @@ func main() {
 		test := strings.Join(question.ExampleTestcaseList, ", ")
 		switch snp.Lang {
 		case "Python3":
-			WriteFile("solution.py", fmt.Sprintf("%spass\n\n\tdef main():\n\t\t# %s\n\n\nmain()", snp.Code, test))
+			WriteFile("solution.py", fmt.Sprintf("%spass\n\n\tdef main():\n%s\n\t\t%s\n%s\n\n\nmain()", snp.Code, `"""`, test, `"""`))
 		case "TypeScript":
-			WriteFile("solution.ts", fmt.Sprintf("%s\n\n//%s", snp.Code, test))
+			WriteFile("solution.ts", fmt.Sprintf("%s\n\n/*\n%s\n*/", snp.Code, test))
 		case "Go":
-			WriteFile("main.go", fmt.Sprintf("package main\n\n%s\n\nfunc main() {\n\t//%s\n}", snp.Code, test))
+			WriteFile("main.go", fmt.Sprintf("package main\n\n%s\n\nfunc main() {\n\t/*\n\t\t%s\n\t*/\n}", snp.Code, test))
 		}
 	}
 	goToFolder(created)

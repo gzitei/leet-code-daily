@@ -175,13 +175,15 @@ func main() {
 		)
 		s += markdown
 		s += "\n\n"
-		s += "> ### Questões Similares:\n>\n"
+		if len(question.SimilarQuestionList) > 0 {
+			s += "> ### Questões Similares:"
+		}
 		for _, similar := range question.SimilarQuestionList {
 			similarTopics := []string{}
 			for _, topic := range similar.TopicTags {
 				similarTopics = append(similarTopics, "#"+topic.Slug)
 			}
-			s += fmt.Sprintf("> %s [%s. %s](https://leetcode.com/problems/%s) %s\n",
+			s += fmt.Sprintf("\n> %s [%s. %s](https://leetcode.com/problems/%s) %s",
 				status[similar.Difficulty],
 				similar.FrontendQuestionID,
 				similar.Title,
@@ -189,7 +191,10 @@ func main() {
 				strings.Join(similarTopics, " "),
 			)
 		}
-		s += "\n\n"
+		s += "\n---\n"
+		if len(question.Hints) > 0 {
+			s += "> ### Dicas:"
+		}
 		for _, h := range question.Hints {
 			s += "\n>💡" + h
 		}
@@ -206,7 +211,7 @@ func main() {
 		test := strings.Join(question.ExampleTestcaseList, ", ")
 		switch snp.Lang {
 		case "Python3":
-			WriteFile("solution.py", fmt.Sprintf("%spass\n\n\tdef main():\n%s\n\t\t%s\n%s\n\n\nmain()", snp.Code, `"""`, test, `"""`))
+			WriteFile("solution.py", fmt.Sprintf("%spass\n\n\ndef main():\n    %s\n    %s\n    %s\n\n\nmain()\n", snp.Code, `"""`, test, `"""`))
 		case "TypeScript":
 			WriteFile("solution.ts", fmt.Sprintf("%s\n\n/*\n%s\n*/", snp.Code, test))
 		case "Go":

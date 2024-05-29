@@ -175,7 +175,7 @@ func main() {
 		)
 		s += markdown
 		s += "\n\n"
-		s += "> ### Questões Similares:\n"
+		s += "> ### Questões Similares:\n>\n"
 		for _, similar := range question.SimilarQuestionList {
 			similarTopics := []string{}
 			for _, topic := range similar.TopicTags {

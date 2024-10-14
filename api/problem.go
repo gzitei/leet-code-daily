@@ -14,7 +14,7 @@ type symbol string
 
 const (
 	easy     symbol = "\U0001F7E2" //🟢
-	medium          = "\U0001F534" //🟡
+	medium          = "\U0001F7E1" //🟡
 	hard            = "\U0001F534" //🔴
 	bookmark        = "\U0001F516" //🔖
 	pin             = "\U0001F4CC" //📌
@@ -106,7 +106,7 @@ func createMarkdown(question Question) {
 		}
 		s += "\n---\n"
 		if len(question.Hints) > 0 {
-			s += "> ### Dicas:"
+			s += "> [!TIP]"
 		}
 		for _, h := range question.Hints {
 			s += "\n>" + lamp + h

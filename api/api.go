@@ -144,7 +144,7 @@ func GetRandomQuestion() (Question, error) {
             }
         }`,
 		"variables": map[string]interface{}{
-			"categorySlug": "", "filters": map[string]interface{}{},
+			"categorySlug": "", "filters": map[string]interface{}{"premiumOnly": false},
 		},
 	}
 	var content string
